@@ -52,6 +52,7 @@ type Rule struct {
 }
 
 type CustomRule struct {
+	RuleID    string `json:"rule_id"`
 	Rule      string `json:"raw_rule"`
 	IsEnabled bool   `json:"isEnabled"`
 }

@@ -246,7 +246,7 @@ func GetReverseProxyServers() ([]string ){
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT url FROM reverse_proxies")
+	rows, err := db.Query("SELECT address FROM reverse_proxies")
 	if err != nil {
 		fmt.Printf("failed to query reverse_proxies: %v", err)
 		return nil
@@ -255,12 +255,12 @@ func GetReverseProxyServers() ([]string ){
 
 	var reverseProxyServers []string
 	for rows.Next() {
-		var url string
-		if err := rows.Scan(&url); err != nil {
+		var address string
+		if err := rows.Scan(&address); err != nil {
 			fmt.Printf("failed to scan row: %v", err)
 			return nil
 		}
-		reverseProxyServers = append(reverseProxyServers, url)
+		reverseProxyServers = append(reverseProxyServers, address)
 	}
 
 	if err = rows.Err(); err != nil {
@@ -323,7 +323,7 @@ func EditSettings(settings models.Settings) (bool, error) {
 
 	// Insert new reverse_proxies
 	for _, proxy := range settings.ReverseProxies {
-		_, err = db.Exec(`INSERT INTO reverse_proxies (url) VALUES (?)`, proxy)
+		_, err = db.Exec(`INSERT INTO reverse_proxies (address) VALUES (?)`, proxy)
 		if err != nil {
 			return false, fmt.Errorf("failed to insert reverse_proxy: %v", err)
 		}
@@ -959,6 +959,7 @@ func GetRuleInfo(ruleID string) ([]models.Rule, error) {
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error reading rows: %v", err)
 	}
+	fmt.Printf("DONE\n")
 
 	return rules, nil
 }
@@ -993,6 +994,18 @@ func AddCustomRule(raw_rule models.CustomRule) (bool, error) {
 	defer db.Close()
 
 	rule := parseRule(raw_rule.Rule)
+
+	// Check if a rule with the given rule_id already exists
+	var existingRuleID string
+	err = db.QueryRow("SELECT rule_id FROM rules WHERE rule_id = ?", rule.RuleID).Scan(&existingRuleID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Fatalf("Failed to check existing rule: %v", err)
+		return false, err
+	}
+
+	if existingRuleID != "" {
+		return false, fmt.Errorf("Rule with ID %s already exists", rule.RuleID)
+	}
 
 	query := `
 	INSERT INTO rules (file_name, rule_id, phase, action, msg, raw_rule, isEnabled)

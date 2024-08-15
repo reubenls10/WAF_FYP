@@ -44,7 +44,7 @@ func GetRules(ruleGroup string) ([]models.Rule){
 
 func GetRuleInfo(ruleID string) ([]models.Rule){
 	rulesData,_ := storage.GetRuleInfo(ruleID)
-
+	fmt.Println("2")
 	return rulesData
 }
 

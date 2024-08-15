@@ -16,8 +16,9 @@ func GetLogs() (*models.Log, error){
 		fmt.Println(err)
 	}
 
-	query := "SELECT * FROM logs ORDER BY timestamp DESC LIMIT 100"
-
+	query := "SELECT * FROM logs ORDER BY timestamp DESC "
+	// query := "SELECT * FROM logs ORDER BY timestamp DESC LIMIT 100"
+	
 	u.Path += "exec"
 	params := url.Values{}
 	params.Add("query", query)
@@ -119,7 +120,7 @@ func GetDashboardData() (models.DashboardData, error) {
 
 	queries := map[string]string{
 		"TrafficOverTime":         fmt.Sprintf("SELECT timestamp AS minute, COUNT(*) AS count FROM logs WHERE timestamp > '%s' SAMPLE BY 1m", twentyFourHoursAgo),
-		"TopClientIPs":            "SELECT client_ip, COUNT(*) AS count FROM logs GROUP BY client_ip ORDER BY count DESC LIMIT 10",
+		"TopClientIPs":            "SELECT client_ip, COUNT(*) AS count FROM logs GROUP BY client_ip ORDER BY count DESC LIMIT 6",
 		"TopPaths":                "SELECT path, COUNT(*) AS count FROM logs GROUP BY path ORDER BY count DESC LIMIT 4",
 		"AcceptHeaders":           "SELECT accept, COUNT(*) AS count FROM logs GROUP BY accept",
 		"TopUserAgents":           "SELECT user_agent, COUNT(*) AS count FROM logs GROUP BY user_agent ORDER BY count DESC LIMIT 10",

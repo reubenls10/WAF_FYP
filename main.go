@@ -29,8 +29,7 @@ var noLog = storage.GetNoLogs()
 var wafOn = storage.GetWafStatus()
 
 // TODO : Load reverseProxy Server
-// var reverse_proxies = [...]string{"localhost:5173"}
-// var reverse_proxies = storage.GetReverseProxyServers()
+var reverse_proxies = storage.GetReverseProxyServers()
 
 
 
@@ -55,7 +54,9 @@ func main() {
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		if c.Request.Method != "GET" {
+		if c.Request.Method == "GET" {
+			// c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, User-Agent, Key, Sec-Ch-Ua, Sec-Ch-Ua-Mobile, Sec-Ch-Ua-Platform")
+		} else{
 			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, User-Agent, Key, Sec-Ch-Ua, Sec-Ch-Ua-Mobile, Sec-Ch-Ua-Platform")
 		}
 		
@@ -120,6 +121,20 @@ func main() {
 			"message": "User Added",
 		})
 	})
+
+	
+	router.POST("/api/sampleApp/item", func(c *gin.Context) {
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "OK!",
+		})
+    })
+
+	router.GET("/api/sampleApp/items", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "OK!",
+		})
+    })
 
 	router.POST("/api/admin/user/edit", func(c *gin.Context) {
  		var user models.UserEdit
@@ -242,10 +257,14 @@ func main() {
 		ok, err := controller.AddCustomRule(rule)
 		if err != nil {
 			fmt.Println(err)
+			c.JSON(http.StatusConflict, gin.H{
+				"error": err.Error(),
+			})
+		} else{
+			c.JSON(http.StatusOK, gin.H{
+				"success": ok,
+			})
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"success": ok,
-		})
 	})
 
 	router.GET("/api/admin/rules/:ruleGroup", func(c *gin.Context) {
@@ -259,8 +278,10 @@ func main() {
 
 	router.GET("/api/admin/rule/:ruleID", func(c *gin.Context) {
 		ruleID := c.Param("ruleID")
+		fmt.Println(ruleID)
 
 		rule := controller.GetRuleInfo(ruleID)
+		fmt.Println(rule)
 		c.JSON(http.StatusOK, gin.H{
 			"rule": rule,
 		})
@@ -324,8 +345,11 @@ func main() {
 		})
 	})
 
-	router.Use(reverseProxy("http://localhost:5173"))
-	// router.Use(reverseProxy("http://localhost/DVWA/"))
+	// router.Use(reverseProxy("http://localhost:5173"))
+	for _, proxy := range reverse_proxies { 
+		router.Use(reverseProxy("http://" + proxy))
+    } 
+
 
 
 	port_number, err := controller.GetPortNumber()
@@ -397,6 +421,7 @@ func CorazaMiddleware() gin.HandlerFunc {
 			HeaderHost:        c.Request.Header.Get("host"),
 			HeaderContentType: headerContentType,
 		}
+		fmt.Println(c.Request.RemoteAddr)
 
 		status, ruleID := CorazaModule(req)
 		if status != 200 {
@@ -443,7 +468,7 @@ func CorazaModule(req Request) (status int, ruleID int) {
 		log.Println("Transaction closed successfully")
 		tx.Close()
 	}()
-
+	fmt.Println(req.RemoteAddr)
 	tx.ProcessConnection(req.RemoteAddr, req.Port, "172.29.122.57", 80)
 
 	tx.ProcessURI(req.Path, req.Method, req.HTTPVersion)
@@ -546,7 +571,7 @@ func logRequest(c *gin.Context, ok bool, ruleID int) {
 		StringColumn("method", c.Request.Method).
 		StringColumn("path", c.Request.URL.String()).
 		StringColumn("protocol", c.Request.Proto).
-		StringColumn("client_ip", c.ClientIP()).
+		StringColumn("client_ip", c.Request.RemoteAddr).
 		StringColumn("incidentResponseID", "").
 		StringColumn("ruleID", strconv.Itoa(ruleID)).
 		BoolColumn("accept", ok).
